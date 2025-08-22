@@ -1,0 +1,12 @@
+langchain-openai
+langchain_community
+langchain
+python-dotenv
+faiss-cpu
+pypdf
+openai
+requests
+twilio
+google-search-results
+wolframalpha
+fastmcp
