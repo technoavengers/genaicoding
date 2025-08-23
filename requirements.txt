@@ -10,3 +10,6 @@ twilio
 google-search-results
 wolframalpha
 fastmcp
+ipykernel
+pandas
+pytest

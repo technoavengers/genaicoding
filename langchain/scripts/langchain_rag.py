@@ -1,11 +1,3 @@
-
-# pip install langchain-openai
-# pip install python-dotenv
-# pip install faiss-cpu
-# pip install langchain_community
-# pip install pypdf
-
-
 import os
 from dotenv import load_dotenv
 from langchain_openai import OpenAI

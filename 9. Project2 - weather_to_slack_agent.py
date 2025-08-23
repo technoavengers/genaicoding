@@ -22,6 +22,7 @@ from langchain.agents import create_tool_calling_agent
 from langchain.tools import Tool
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor
+from langchain_core.prompts import ChatPromptTemplate
 
 # Load environment variables from .env
 load_dotenv()
@@ -53,29 +54,44 @@ def get_weather(city: str) -> str:
     return formatted
 
 # Define tool for LangChain
+
 weather_tool = Tool(
     name="WeatherAPI",
     description="Fetches current weather for a given city using OpenWeatherMap",
     func=get_weather
 )
 
+# Define Slack tool
+def send_to_slack(message: str) -> str:
+    slack_payload = {"text": message}
+    slack_response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
+    if slack_response.status_code == 200:
+        return "Weather update sent to Slack successfully."
+    else:
+        return f"Failed to send to Slack: {slack_response.text}"
+
+slack_tool = Tool(
+    name="SlackPoster",
+    description="Posts a message to a Slack channel using a webhook.",
+    func=send_to_slack
+)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a smart assistant that uses weather tool and answer the user's questions about the weather."),
+    ("user", "{input}"),
+    ("placeholder", "{agent_scratchpad}")  # Required for tool-using agents
+])
+
+
 # Setup LLM and Agent
 llm = ChatOpenAI(model="gpt-4", temperature=0)
-agent = create_tool_calling_agent(llm, [weather_tool])
-agent_executor = AgentExecutor(agent=agent, tools=[weather_tool], verbose=True)
+agent = create_tool_calling_agent(llm, [weather_tool, slack_tool], prompt=prompt)
+agent_executor = AgentExecutor(agent=agent, tools=[weather_tool, slack_tool], verbose=True)
 
 # Run agent
+
 city_input = input("Enter a city name to get weather update: ")
-response = agent_executor.invoke({"input": f"What is the weather in {city_input}?"})
-
-# Post to Slack
-slack_payload = {
-    "text": f"GenAI Agent Response:\n{response['output']}"
-}
-slack_response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
-
-# Slack result feedback
-if slack_response.status_code == 200:
-    print("Weather update sent to Slack successfully.")
-else:
-    print(f"Failed to send to Slack: {slack_response.text}")
+weather_response = agent_executor.invoke({"input": f"What is the weather in {city_input}?"})
+slack_message = f"GenAI Agent Response:\n{weather_response['output']}"
+slack_response = agent_executor.invoke({"input": f"Post this to Slack: {slack_message}"})
+print(slack_response['output'])
