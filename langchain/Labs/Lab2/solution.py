@@ -7,6 +7,7 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from langchain_openai import OpenAI
 from langchain.prompts import PromptTemplate
+from langchain.agents import create_tool_calling_agent, AgentExecutor
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,9 +15,11 @@ load_dotenv()
 # Get OpenAI API key from environment
 openai_api_key = os.getenv("OPENAI_API_KEY")
 google_map_key= os.getenv("GOOGLE_MAPS_API_KEY")
+print(f"Google Maps API Key: {google_map_key}")
 
 # ✅ Initialize Google Maps client (replace with your API key or env var)
 gmaps = googlemaps.Client(key=google_map_key)
+
 
 
 # 🛠️ Define the custom tool
@@ -41,11 +44,8 @@ llm = ChatOpenAI(api_key=openai_api_key,model="gpt-4o-mini", temperature=0)
 template = """You are a helpful navigation assistant.
 A user will give you an origin, destination, and travel mode.
 Use the directions_tool to fetch step-by-step directions.
-
-Origin: {origin}
-Destination: {destination}
-Mode: {mode}
-
+input: {input}
+{agent_scratchpad}
 Now provide the directions clearly:
 """
 prompt = PromptTemplate(
@@ -56,7 +56,11 @@ prompt = PromptTemplate(
 # 🔗 Register tool with the agent
 tools = [directions_tool]
 agent = initialize_agent(tools, llm, AgentType.OPENAI_MULTI_FUNCTIONS, verbose=True)
-
+agent = create_tool_calling_agent(
+    llm=llm,
+    tools=[directions_tool],
+    prompt=prompt
+)
 
 # 6️⃣ Take input from user
 origin = input("Enter starting location: ")
@@ -64,7 +68,8 @@ destination = input("Enter destination: ")
 mode = input("Enter travel mode (driving/walking/bicycling/transit): ")
 
 # 7️⃣ Format the prompt with user input
-query = prompt.format(origin=origin, destination=destination, mode=mode)
+query = f"Give me direction from {origin}, to {destination}, by {mode}."
 
-# 🚀 Run Agent
-print(agent.run(query))
+executor = AgentExecutor(agent=agent, tools=[directions_tool], verbose=True)
+
+response = executor.invoke({"input": query})
