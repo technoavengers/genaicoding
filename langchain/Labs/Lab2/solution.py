@@ -54,8 +54,6 @@ prompt = PromptTemplate(
 )
 
 # 🔗 Register tool with the agent
-tools = [directions_tool]
-agent = initialize_agent(tools, llm, AgentType.OPENAI_MULTI_FUNCTIONS, verbose=True)
 agent = create_tool_calling_agent(
     llm=llm,
     tools=[directions_tool],
