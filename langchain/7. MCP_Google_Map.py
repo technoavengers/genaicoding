@@ -6,6 +6,8 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain.agents import initialize_agent, AgentType
 from fastmcp.client.transports import StdioTransport  # or NpxStdioTransport
+from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain.prompts import PromptTemplate
 
 
 # Load environment variables from .env file
@@ -30,7 +32,7 @@ async def call_directions(origin: str, destination: str, mode: str = "driving"):
             "maps_directions",
             {"origin": origin, "destination": destination, "mode": mode},
         )
-        return result.data
+        return result
 
 
 # ---------- Step 2: Wrap in LangChain tool ----------
@@ -45,15 +47,19 @@ def main():
     llm = ChatOpenAI(model="gpt-4o-mini")   # Or gpt-4o / gpt-3.5-turbo
     tools = [get_directions]
 
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.OPENAI_MULTI_FUNCTIONS,
-        verbose=True,
-    )
+    prompt_template = """
+    You are assisting with directions.You are given tools, use them to answer the question.
+    Question: {input}
+    {agent_scratchpad}
+    """
+
+    agent = create_tool_calling_agent(llm, [get_directions], PromptTemplate.from_template(prompt_template))
+    executor = AgentExecutor(agent=agent, tools=[get_directions],verbose=True)
+
 
     # Example query
-    result = agent.run("Find me driving directions from Delhi to Jaipur")
+    query="Find me driving directions from Delhi to Jaipur"
+    result = executor.invoke({"input": query})
     print("\nFinal Answer:\n", result)
 
 
