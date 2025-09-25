@@ -22,6 +22,7 @@ from langchain.agents import create_tool_calling_agent
 from langchain.tools import Tool
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor
+from langchain.prompts import PromptTemplate
 
 # Load environment variables from .env
 load_dotenv()
@@ -52,6 +53,14 @@ def get_weather(city: str) -> str:
     )
     return formatted
 
+def send_slack_message(message: str) -> None:
+    slack_payload = {
+        "text": message
+    }
+    response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
+    if response.status_code != 200:
+        raise ValueError(f"Request to Slack returned an error {response.status_code}, the response is:\n{response.text}")
+
 # Define tool for LangChain
 weather_tool = Tool(
     name="WeatherAPI",
@@ -59,23 +68,24 @@ weather_tool = Tool(
     func=get_weather
 )
 
+slack_tool = Tool(
+    name="SlackPoster",
+    description="Posts a message to a Slack channel using a webhook",
+    func=send_slack_message
+)
+
+prompt_template="""You are a weather assistant. When asked about the weather, 
+  you will fetch the current weather information using the WeatherAPI tool and 
+  then post the update to Slack using the SlackPoster tool.
+  Question: {input}
+  {agent_scratchpad}
+    """
+
 # Setup LLM and Agent
 llm = ChatOpenAI(model="gpt-4", temperature=0)
-agent = create_tool_calling_agent(llm, [weather_tool])
-agent_executor = AgentExecutor(agent=agent, tools=[weather_tool], verbose=True)
+agent = create_tool_calling_agent(llm, [weather_tool, slack_tool],
+    PromptTemplate.from_template(prompt_template))
+agent_executor = AgentExecutor(agent=agent, tools=[weather_tool, slack_tool], verbose=True)
 
-# Run agent
-city_input = input("Enter a city name to get weather update: ")
-response = agent_executor.invoke({"input": f"What is the weather in {city_input}?"})
 
-# Post to Slack
-slack_payload = {
-    "text": f"GenAI Agent Response:\n{response['output']}"
-}
-slack_response = requests.post(SLACK_WEBHOOK_URL, json=slack_payload)
-
-# Slack result feedback
-if slack_response.status_code == 200:
-    print("Weather update sent to Slack successfully.")
-else:
-    print(f"Failed to send to Slack: {slack_response.text}")
+response = agent_executor.invoke({"input": f"What is the weather in London?"})

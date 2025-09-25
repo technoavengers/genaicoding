@@ -1,8 +1,9 @@
-from langchain_community.llms import Ollama
+from langchain_community.chat_models import ChatOllama
+from langchain.schema import HumanMessage,SystemMessage
 
 # Connect to Ollama model
-llm = Ollama(model="mistral")
+llm = ChatOllama(model="mistral",streaming=False)
 
 # Send a message
-response = llm.invoke("Explain async vs multithreading in simple words")"")
+response = llm.invoke("What is capital of france")
 print(response.content)

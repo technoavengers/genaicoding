@@ -26,7 +26,7 @@ async def list_commits(
      transport = StdioTransport(
         command="npx",
         args=["-y", "@modelcontextprotocol/server-github"],
-        env={"GITHUB_PERSONAL_ACCESS_TOKEN": os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")},
+        env={"GITHUB_PERSONAL_ACCESS_TOKEN": os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")}
     )
     
      client = Client(transport)

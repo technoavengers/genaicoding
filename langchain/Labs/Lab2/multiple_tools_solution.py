@@ -87,4 +87,4 @@ agent = create_tool_calling_agent(
 
 executor = AgentExecutor(agent=agent, tools=[directions_tool,weather_tool,get_travel_time], verbose=True)
 
-response = executor.invoke({"input": "Give me direction from New York to Boston by driving.Tell me whether i need to leave now based on weather conditions and travel time?"})
+response = executor.invoke({"input": "I am travelling from newyork to boston by car, Based on travel time, should i do WFH?"})
